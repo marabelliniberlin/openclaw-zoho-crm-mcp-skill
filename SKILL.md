@@ -13,7 +13,7 @@ Source: [sprintberlin/openclaw-zoho-crm-mcp-skill](https://github.com/sprintberl
 
 - A Zoho CRM MCP endpoint from `mcp.zoho.eu`
 - `mcporter`
-- `ZOHO_MCP_URL` for the bundled scripts
+- Endpoint configuration via `ZOHO_CRM_MCP_URL` / `ZOHO_MCP_URL`, `--profile`, or `--mcp-url`
 
 Treat the endpoint as a credential. Never print it, commit it, or copy it into tickets, prompts, or chats.
 
@@ -22,14 +22,20 @@ Treat the endpoint as a credential. Never print it, commit it, or copy it into t
 1. Create or open a Zoho CRM connection at `mcp.zoho.eu`.
 2. Select only the required Actions. Start with [references/ACTION_PROFILES.md](references/ACTION_PROFILES.md).
 3. Use [references/ZOHO_CRM_MCP_ACTIONS.md](references/ZOHO_CRM_MCP_ACTIONS.md) only when a profile lacks a required Action.
-4. Store the endpoint securely and expose it to the local process as `ZOHO_MCP_URL`.
-5. Inspect the live server before relying on an Action:
+4. Configure one default endpoint with `ZOHO_CRM_MCP_URL` (legacy `ZOHO_MCP_URL` also works), or create named profiles using [references/MULTI_ACCOUNT.md](references/MULTI_ACCOUNT.md).
+5. Inspect the selected live server before relying on an Action:
 
 ```bash
-mcporter list "$ZOHO_MCP_URL"
+mcporter list "$ZOHO_CRM_MCP_URL"
 ```
 
 The catalog describes possible Actions. It does not prove that an Action is enabled on a particular MCP server. Runtime tool names usually have the `ZohoCRM_` prefix, while the Zoho MCP setup UI uses the Action name without that prefix.
+
+## Endpoint selection
+
+For one account, set `ZOHO_CRM_MCP_URL`; legacy `ZOHO_MCP_URL` remains supported. For multiple accounts, pass `--profile NAME` to a bundled helper. Profiles live in `~/.config/zoho-mcp/profiles.json` by default and can resolve endpoints through an environment variable, a local URL file, or a direct URL. One-off `--mcp-url URL` overrides everything, but may expose the credential in shell history or process listings.
+
+Resolution order is `--mcp-url`, selected profile, then the environment fallback. Profile selection is `--profile`, `ZOHO_CRM_MCP_PROFILE`, then `ZOHO_MCP_PROFILE`. See [references/MULTI_ACCOUNT.md](references/MULTI_ACCOUNT.md) for the shared CRM, People, and Books format.
 
 ## Safe workflow
 
@@ -52,7 +58,7 @@ cat > /tmp/zoho_search.json <<'JSON'
   "query_params": {"criteria": "(Email:equals:user@example.com)"}
 }
 JSON
-mcporter call "$ZOHO_MCP_URL.ZohoCRM_searchRecords" --args "$(< /tmp/zoho_search.json)"
+mcporter call "$ZOHO_CRM_MCP_URL.ZohoCRM_searchRecords" --args "$(< /tmp/zoho_search.json)"
 ```
 
 Run COQL:
@@ -65,14 +71,14 @@ cat > /tmp/zoho_coql.json <<'JSON'
   }
 }
 JSON
-mcporter call "$ZOHO_MCP_URL.ZohoCRM_executeCOQLQuery" --args "$(< /tmp/zoho_coql.json)"
+mcporter call "$ZOHO_CRM_MCP_URL.ZohoCRM_executeCOQLQuery" --args "$(< /tmp/zoho_coql.json)"
 ```
 
 Use the schema shown by the live MCP server when it differs from these examples. For deeply nested arguments, use a temporary JSON file instead of fragile shell quoting.
 
 ## Bundled scripts
 
-The scripts require `ZOHO_MCP_URL`, call `mcporter` without shell expansion, paginate results, and normalize common Zoho MCP response envelopes.
+The scripts resolve the endpoint via `--mcp-url`, `--profile` (`~/.config/zoho-mcp/profiles.json`), or environment variables (`ZOHO_CRM_MCP_URL`, `ZOHO_MCP_URL`), call `mcporter` without shell expansion, paginate results, and normalize common Zoho MCP response envelopes.
 
 ```bash
 python3 scripts/list_contacts.py --search "Smith" --json --limit 20
@@ -88,6 +94,7 @@ Supported options:
 - `list_contacts.py`: `--search`, `--fields`, `--json`, `--full`, `--limit`, `--page-size`, `--timeout`
 - `list_accounts.py`: `--search`, `--all`, `--where`, `--fields`, `--json`, `--limit`, `--page-size`, `--timeout`
 - `search_records.py`: positional `module`, optional positional search term, `--search`, `--coql`, `--fields`, `--json`, `--limit`, `--page-size`, `--timeout`
+- All helpers: `--mcp-url`, `--profile`, `--profiles-file`
 
 Run any helper with `--help` without configuring credentials. Unknown or incomplete options must exit with status 2.
 
@@ -111,7 +118,7 @@ cat > /tmp/zoho_fields.json <<'JSON'
   "query_params": {"module": "Contacts"}
 }
 JSON
-mcporter call "$ZOHO_MCP_URL.ZohoCRM_getFields" --args "$(< /tmp/zoho_fields.json)"
+mcporter call "$ZOHO_CRM_MCP_URL.ZohoCRM_getFields" --args "$(< /tmp/zoho_fields.json)"
 ```
 
 After confirming an organization-specific API name, substitute it where documentation shows `<CUSTOM_FIELD_API_NAME>`.
@@ -134,12 +141,14 @@ Zoho MCP upload Actions may report success without transferring local binary dat
 - [Action profiles](references/ACTION_PROFILES.md): recommended least-privilege selections for new MCP servers
 - [Complete CRM Actions catalog](references/ZOHO_CRM_MCP_ACTIONS.md): all known CRM Actions and descriptions
 - [Functions API](references/FUNCTIONS_API.md): create, update, and verify Deluge functions through MCP (`createFunctions`, `updateFunction`, naming rules, Button category)
+- [Multi-account profiles](references/MULTI_ACCOUNT.md): portable endpoint selection for one or many Zoho accounts
 
 Load the profile reference when configuring a connection. Load the full catalog only when the profile lacks a required Action. Load the Functions API reference before creating or updating CRM functions.
 
 ## Troubleshooting and safety
 
-- **`ZOHO_MCP_URL not set`**: set the environment variable in the current session without exposing its value.
+- **No endpoint configured**: set `ZOHO_CRM_MCP_URL` / `ZOHO_MCP_URL`, use `--profile`, or pass `--mcp-url`; never print the value.
+- **Profile not found or wrong app**: verify `--profiles-file`, the profile name, and its `services.crm` entry.
 - **Module or field error**: use `getModules` or `getFields` to confirm the API name and permissions.
 - **OAuth scope error**: reconnect the affected MCP connection with the required scope; never switch to another customer's endpoint.
 - Keep all delete Actions disabled by default.

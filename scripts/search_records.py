@@ -17,11 +17,17 @@ Usage:
 
 import argparse
 import json
-import os
 import subprocess
 import sys
+from pathlib import Path
 
-MCP_URL = os.environ.get("ZOHO_MCP_URL", "")
+_SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
+
+from mcp_endpoint import EndpointResolutionError, EndpointSelector, add_endpoint_arguments
+
+ENDPOINT = EndpointSelector("crm", ("ZOHO_CRM_MCP_URL", "ZOHO_MCP_URL"))
 
 
 def positive_int(value):
@@ -92,14 +98,15 @@ def build_parser():
         default=30,
         help="MCP call timeout in seconds (default: 30)",
     )
+    add_endpoint_arguments(parser)
     return parser
 
 
 def mcporter_call(tool, args, timeout=30):
-    mcp_url = os.environ.get("ZOHO_MCP_URL") or MCP_URL
-    if not mcp_url:
-        print("Error: ZOHO_MCP_URL not set. Please set the environment variable.", file=sys.stderr)
-        print("  export ZOHO_MCP_URL='https://your-org-zoho-crm-xxxxx.zohomcp.eu/mcp/YOUR_TOKEN/message'", file=sys.stderr)
+    try:
+        mcp_url = ENDPOINT.get()
+    except EndpointResolutionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 
     cmd = [
@@ -191,6 +198,7 @@ def coql_query(module, fields, where_clause, limit=100, timeout=30):
 def main(argv=None):
     parser = build_parser()
     args = parser.parse_args(argv)
+    ENDPOINT.configure(args)
 
     module = args.module
     search_term = args.search or args.query

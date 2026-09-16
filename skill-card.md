@@ -35,10 +35,10 @@ Mitigation: Enable only the CRM actions needed for the use case and avoid delete
 **Output Type(s):** [guidance, shell commands, configuration, code] <br>
 **Output Format:** [Markdown guidance with bash, JSON, SQL, and Python examples] <br>
 **Output Parameters:** [1D] <br>
-**Other Properties Related to Output:** [Requires a ZOHO_MCP_URL endpoint; bundled helper scripts can print table or JSON output from Zoho CRM MCP calls.] <br>
+**Other Properties Related to Output:** [Requires ZOHO_CRM_MCP_URL, a named profile, or a one-off endpoint; bundled helper scripts can print table or JSON output from Zoho CRM MCP calls.] <br>
 
 ## Skill Version(s): <br>
-1.5.1 <br>
+1.6.0 <br>
 
 ## Ethical Considerations: <br>
 Users should evaluate whether this skill is appropriate for their environment, review any generated or modified files before relying on them, and apply their organization's safety, security, and compliance requirements before deployment. <br>

@@ -17,31 +17,31 @@ This repository contains the public source for the ClawHub skill [`@sprintcx/zoh
 |---|---|
 | Zoho CRM MCP Server | A configured endpoint from [mcp.zoho.eu](https://mcp.zoho.eu) |
 | mcporter | MCP client CLI (bundled with OpenClaw; elsewhere `npm i -g mcporter`) |
-| Environment variable | `ZOHO_MCP_URL` must be set |
+| Endpoint selection | `ZOHO_CRM_MCP_URL` (legacy `ZOHO_MCP_URL` also works) for one account; named profiles or `--mcp-url` for multiple accounts |
 
-### Environment Variable Setup
+### Single-account setup
 
-This skill requires the `ZOHO_MCP_URL` environment variable. Without it, the Python scripts will not work.
+For the common single-account case, set `ZOHO_CRM_MCP_URL` (legacy `ZOHO_MCP_URL` also works). The helper scripts also support named profiles and one-off URL overrides.
 
 Add this to your shell profile, for example `~/.bashrc` or `~/.zshrc`:
 
 ```bash
-export ZOHO_MCP_URL="https://your-org-zoho-crm-xxxxx.zohomcp.eu/mcp/YOUR_TOKEN/message"
+export ZOHO_CRM_MCP_URL="https://your-org-zoho-crm-xxxxx.zohomcp.eu/mcp/YOUR_TOKEN/message"
 ```
 
 Or set it per session:
 
 ```bash
-ZOHO_MCP_URL="https://your-org-zoho-crm-xxxxx.zohomcp.eu/mcp/YOUR_TOKEN/message" python3 scripts/list_contacts.py
+ZOHO_CRM_MCP_URL="https://your-org-zoho-crm-xxxxx.zohomcp.eu/mcp/YOUR_TOKEN/message" python3 scripts/list_contacts.py
 ```
 
 To verify that it is set without printing the credential:
 
 ```bash
-if [ -n "$ZOHO_MCP_URL" ]; then echo "ZOHO_MCP_URL is set"; else echo "ZOHO_MCP_URL is not set"; fi
+if [ -n "$ZOHO_CRM_MCP_URL" ]; then echo "ZOHO_CRM_MCP_URL is set"; else echo "ZOHO_CRM_MCP_URL is not set"; fi
 ```
 
-Treat `ZOHO_MCP_URL` like a password. It contains CRM access credentials.
+Treat `ZOHO_CRM_MCP_URL` like a password. It contains CRM access credentials.
 
 ## How to Get Your MCP URL
 
@@ -56,22 +56,37 @@ Treat `ZOHO_MCP_URL` like a password. It contains CRM access credentials.
    https://your-org-zoho-crm-xxxxx.zohomcp.eu/mcp/abc123def456/message
    ```
 
-7. Set it as `ZOHO_MCP_URL`.
+7. Set it as `ZOHO_CRM_MCP_URL`.
 
-### Multiple Organizations
+### Multiple organizations and customer accounts
 
-If you manage multiple Zoho CRM orgs, each gets its own MCP endpoint. You can:
+Use one shared profile file instead of changing global environment variables:
 
-- Set one default via `ZOHO_MCP_URL`
-- Pass others explicitly in scripts or `mcporter` calls
-- Use a wrapper script or `.env` file per project
+```json
+{
+  "version": 1,
+  "profiles": {
+    "acme": {
+      "services": {
+        "crm": {"env": "ACME_CRM_MCP_URL"}
+      }
+    }
+  }
+}
+```
+
+```bash
+python3 scripts/list_contacts.py --profile acme
+```
+
+The default file is `~/.config/zoho-mcp/profiles.json`. Endpoint resolution is `--mcp-url`, selected profile, then the app environment variable. Prefer profile entries using `env` or `url_file`; direct URLs in JSON are supported but make the file credential-bearing. Full format: [`references/MULTI_ACCOUNT.md`](references/MULTI_ACCOUNT.md).
 
 ## Quick Start
 
 ### List available tools on your MCP server
 
 ```bash
-mcporter list $ZOHO_MCP_URL
+mcporter list "$ZOHO_CRM_MCP_URL"
 ```
 
 ### Search for a contact by name
@@ -83,7 +98,7 @@ cat << 'EOF' > /tmp/zoho_search.json
   "query_params": {"criteria": "(Last_Name:equals:Smith)"}
 }
 EOF
-mcporter call "$ZOHO_MCP_URL.ZohoCRM_searchRecords" --args "$(< /tmp/zoho_search.json)"
+mcporter call "$ZOHO_CRM_MCP_URL.ZohoCRM_searchRecords" --args "$(< /tmp/zoho_search.json)"
 ```
 
 ### Get a single record by ID
@@ -94,7 +109,7 @@ cat << 'EOF' > /tmp/zoho_record.json
   "path_variables": {"module": "Accounts", "recordID": "1234567890"}
 }
 EOF
-mcporter call "$ZOHO_MCP_URL.ZohoCRM_getRecord" --args "$(< /tmp/zoho_record.json)"
+mcporter call "$ZOHO_CRM_MCP_URL.ZohoCRM_getRecord" --args "$(< /tmp/zoho_record.json)"
 ```
 
 ### Run a COQL query
@@ -105,14 +120,14 @@ cat << 'EOF' > /tmp/zoho_coql.json
   "body": {"select_query": "SELECT Id, Account_Name, Website FROM Accounts WHERE Website != '' ORDER BY Account_Name LIMIT 50"}
 }
 EOF
-mcporter call "$ZOHO_MCP_URL.ZohoCRM_executeCOQLQuery" --args "$(< /tmp/zoho_coql.json)"
+mcporter call "$ZOHO_CRM_MCP_URL.ZohoCRM_executeCOQLQuery" --args "$(< /tmp/zoho_coql.json)"
 ```
 
 ## Python Scripts
 
-Ready-to-use scripts for common CRM operations. All scripts require `ZOHO_MCP_URL` to be set.
+Ready-to-use scripts for common CRM operations. They accept `--profile`, `--profiles-file`, and `--mcp-url`, with `ZOHO_CRM_MCP_URL` as the single-account fallback.
 
-The bundled Python scripts call `mcporter` directly through `subprocess.run([...])` and do not invoke a shell. This avoids shell expansion of the credential-bearing `ZOHO_MCP_URL`.
+The bundled Python scripts call `mcporter` directly through `subprocess.run([...])` and do not invoke a shell. This avoids shell expansion of the credential-bearing CRM endpoint.
 
 ### `list_contacts.py`
 
@@ -182,7 +197,7 @@ cat << 'EOF' > /tmp/args.json
   "query_params": {"criteria": "(Email:equals:test@example.com)"}
 }
 EOF
-mcporter call "$ZOHO_MCP_URL.ZohoCRM_searchRecords" --args "$(< /tmp/args.json)"
+mcporter call "$ZOHO_CRM_MCP_URL.ZohoCRM_searchRecords" --args "$(< /tmp/args.json)"
 ```
 
 ### Pagination
@@ -206,7 +221,7 @@ cat << 'EOF' > /tmp/args.json
   "query_params": {"module": "Contacts", "include": "allowed_permissions_to_update"}
 }
 EOF
-mcporter call "$ZOHO_MCP_URL.ZohoCRM_getFields" --args "$(< /tmp/args.json)"
+mcporter call "$ZOHO_CRM_MCP_URL.ZohoCRM_getFields" --args "$(< /tmp/args.json)"
 ```
 
 ## CRM Action Catalog and Profiles
@@ -238,7 +253,7 @@ After configuring the connection at [mcp.zoho.eu](https://mcp.zoho.eu), verify
 the actual result rather than trusting the profile document:
 
 ```bash
-mcporter list "$ZOHO_MCP_URL"
+mcporter list "$ZOHO_CRM_MCP_URL"
 ```
 
 The profile and catalog use the Action names shown in the Zoho MCP setup UI.
@@ -293,9 +308,9 @@ SELECT Id, Account_Name, Billing_City FROM Accounts WHERE Billing_City = 'Berlin
 
 ## Troubleshooting
 
-### `ZOHO_MCP_URL nicht gesetzt` / `ZOHO_MCP_URL not set`
+### No endpoint configured
 
-Set the environment variable with your MCP endpoint URL. See [Environment Variable Setup](#environment-variable-setup).
+Set `ZOHO_CRM_MCP_URL`, use `--profile`, or pass `--mcp-url`. For profile errors, verify the selected name, `--profiles-file`, and the `services.crm` entry. See [Multi-account profiles](references/MULTI_ACCOUNT.md).
 
 ### `Mandatory query param module is not present`
 
@@ -315,14 +330,17 @@ Zoho CRM shows display labels in the UI, but the API uses `api_name` values, for
 - `references/ACTION_PROFILES.md`: Least-privilege Action profiles for new CRM MCP connections.
 - `references/ZOHO_CRM_MCP_ACTIONS.md`: Complete catalog of 1,291 known CRM Actions.
 - `references/FUNCTIONS_API.md`: Create, update, and verify Deluge functions through MCP.
+- `references/MULTI_ACCOUNT.md`: Portable single-account and multi-account endpoint profiles.
 - `skill-card.md`: ClawHub release card metadata.
 - `scripts/list_contacts.py`: List or search Zoho CRM contacts.
 - `scripts/list_accounts.py`: List or search Zoho CRM accounts.
 - `scripts/search_records.py`: Generic Zoho CRM module search and COQL helper.
+- `scripts/mcp_endpoint.py`: Shared endpoint and profile resolver.
+- `tests/test_endpoint_resolution.py`: Credential-free resolver tests.
 
 ## Security Notes
 
-Earlier ClawHub releases called `mcporter` through `bash -c`, which made the credential-bearing `ZOHO_MCP_URL` unsafe if a malicious value was injected into the environment.
+Earlier ClawHub releases called `mcporter` through `bash -c`, which made the credential-bearing CRM endpoint unsafe if a malicious value was injected into the environment.
 
 The repository version calls `mcporter` directly through `subprocess.run([...])` without shell expansion.
 
@@ -335,7 +353,7 @@ clawhub skill publish . \
   --slug zoho-crm-mcp \
   --name "Zoho CRM MCP" \
   --owner sprintcx \
-  --version 1.5.1 \
+  --version 1.6.0 \
   --source-repo sprintberlin/openclaw-zoho-crm-mcp-skill \
   --source-ref main \
   --source-path . \
