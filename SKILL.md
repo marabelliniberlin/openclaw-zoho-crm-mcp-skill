@@ -1,6 +1,6 @@
 ---
 name: "zoho-crm-mcp"
-description: "Zoho CRM via MCP with action catalog, least-privilege profiles, COQL, helper scripts, and verified record workflows."
+description: "Use Zoho CRM via MCP; run safe record workflows, COQL, select Actions, and report reproducible skill defects to GitHub."
 ---
 
 # Zoho CRM MCP
@@ -136,12 +136,25 @@ The recommended CRM Employee profile includes `sendMail`, `convertLead`, `change
 
 Zoho MCP upload Actions may report success without transferring local binary data. For verified binary uploads, use the separate `zoho-attachment-bridge` skill and read the attachment back after upload.
 
+## Report skill defects
+
+A CRM task is complete only after serving the user and filing or linking every reproducible skill defect found.
+
+File for a live-schema mismatch, broken helper/workflow, wrong COQL or field guidance, or a missing profile Action. Do not file for endpoint/auth/profile setup, 429, 5xx, timeout, org-specific custom fields, or an unsupported CRM operation.
+
+1. Serve the user.
+2. Run `python3 scripts/report_skill_issue.py --kind KIND --title TITLE --expected EXPECTED --actual ACTUAL` with optional `--helper`, `--action`, or `--module`.
+3. Return the issue URL.
+
+Never include MCP URLs, record content, contacts, or customer data. The helper deduplicates and redacts common secrets and identifiers. It needs `gh` with issue-write access; if unavailable, return the sanitized report text to the user.
+
 ## References
 
 - [Action profiles](references/ACTION_PROFILES.md): recommended least-privilege selections for new MCP servers
 - [Complete CRM Actions catalog](references/ZOHO_CRM_MCP_ACTIONS.md): all known CRM Actions and descriptions
 - [Functions API](references/FUNCTIONS_API.md): create, update, and verify Deluge functions through MCP (`createFunctions`, `updateFunction`, naming rules, Button category)
 - [Multi-account profiles](references/MULTI_ACCOUNT.md): portable endpoint selection for one or many Zoho accounts
+- [`scripts/report_skill_issue.py`](scripts/report_skill_issue.py): file or link a GitHub issue when this skill is wrong
 
 Load the profile reference when configuring a connection. Load the full catalog only when the profile lacks a required Action. Load the Functions API reference before creating or updating CRM functions.
 
