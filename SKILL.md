@@ -136,17 +136,15 @@ The recommended CRM Employee profile includes `sendMail`, `convertLead`, `change
 
 Zoho MCP upload Actions may report success without transferring local binary data. For verified binary uploads, use the separate `zoho-attachment-bridge` skill and read the attachment back after upload.
 
-## Report skill defects
+## Report skill defects and contribute
 
-A CRM task is complete only after serving the user and filing or linking every reproducible skill defect found.
+Contributions are explicitly welcome from humans and agents. A CRM task is complete only after serving the user and filing or linking every reproducible skill defect found.
 
-File for a live-schema mismatch, broken helper/workflow, wrong COQL or field guidance, or a missing profile Action. Do not file for endpoint/auth/profile setup, 429, 5xx, timeout, org-specific custom fields, or an unsupported CRM operation.
+- **Issue**: For schema mismatches, broken helpers or workflows, wrong COQL or field guidance, or missing profile Actions. Run `python3 scripts/report_skill_issue.py --kind KIND --title TITLE --expected EXPECTED --actual ACTUAL`.
+- **Pull request**: Preferred when you can fix and verify the defect.
+- See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution rules and `gh` workflows.
 
-1. Serve the user.
-2. Run `python3 scripts/report_skill_issue.py --kind KIND --title TITLE --expected EXPECTED --actual ACTUAL` with optional `--helper`, `--action`, or `--module`.
-3. Return the issue URL.
-
-Never include MCP URLs, record content, contacts, or customer data. The helper deduplicates and redacts common secrets and identifiers. It needs `gh` with issue-write access; if unavailable, return the sanitized report text to the user.
+Do not file skill issues for endpoint/auth/profile setup, rate limits, transient service failures, timeouts, organization-specific fields, or unsupported CRM operations. Never include MCP URLs, record content, contacts, or customer data.
 
 ## References
 
@@ -155,6 +153,7 @@ Never include MCP URLs, record content, contacts, or customer data. The helper d
 - [Functions API](references/FUNCTIONS_API.md): create, update, and verify Deluge functions through MCP (`createFunctions`, `updateFunction`, naming rules, Button category)
 - [Multi-account profiles](references/MULTI_ACCOUNT.md): portable endpoint selection for one or many Zoho accounts
 - [`scripts/report_skill_issue.py`](scripts/report_skill_issue.py): file or link a GitHub issue when this skill is wrong
+- [Contributing guide](CONTRIBUTING.md): issue and pull request workflows for humans and agents
 
 Load the profile reference when configuring a connection. Load the full catalog only when the profile lacks a required Action. Load the Functions API reference before creating or updating CRM functions.
 

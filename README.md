@@ -327,6 +327,7 @@ Zoho CRM shows display labels in the UI, but the API uses `api_name` values, for
 ## Repository Files
 
 - `SKILL.md`: Agent Skill instructions.
+- `CONTRIBUTING.md`: Issue and pull request workflows for humans and agents.
 - `references/ACTION_PROFILES.md`: Least-privilege Action profiles for new CRM MCP connections.
 - `references/ZOHO_CRM_MCP_ACTIONS.md`: Complete catalog of 1,291 known CRM Actions.
 - `references/FUNCTIONS_API.md`: Create, update, and verify Deluge functions through MCP.
