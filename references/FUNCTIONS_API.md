@@ -165,6 +165,25 @@ If the live MCP catalog has no dedicated REST-exposure Action, enable it in CRM:
 
 Do not place the generated invocation URL or authentication token in a public repository.
 
+## Workflow Association: Automation Functions Are Separate Entities
+
+Workflow rules attach Deluge functions as associative actions with `{ "type": "functions", "id": "<ACTION_ID>" }`. That `ACTION_ID` is **not** the function metadata ID.
+
+- `getFunctions`, `createFunctions`, `updateFunction` return and manage function **metadata** (Developer Hub functions).
+- A workflow rule needs the **automation function action entity**, which has its own ID. Observed live (Smart Bridges, 21.09.2026): function `wrapperleadstatusaisummary` has metadata ID `229637000078266247`, its workflow action entity is `229637000078266259`.
+- Metadata writes (including `updateFunction` auto-publish) do **not** create the action entity. A freshly created active `Automation` function cannot be attached to a workflow rule until the entity exists: `postWorkflowRule` / `updateWorkflowRuleById` answer `INVALID_DATA` with `"This given actionid seems to be invalid"` at `actions[0].id`.
+- Manage the entities with the dedicated Automation Functions actions:
+  - `postAutomationFunctions`: create the action entity for an existing function (verify module and function first). Response contains the created action IDs.
+  - `getAllAutomationFunctions`: paginated list of all automation function definitions, filter by module and `feature_type`.
+  - `getAutomationFunctions`: fetch a single entity by ID (full configuration incl. arguments and module context).
+  - `putAutomationFunctions`: full update of one or more entities.
+  - `deleteAutomationFunctions` / `deleteAutomationFunction`: bulk/single delete, keep disabled by default.
+  - `getAssociatedModules`: modules with at least one configured automation function.
+  - `getAutomationFunctionFailures`: execution failures, filter by function ID, module, date range.
+- If these actions are not enabled on the MCP server, the workflow attach must be done once in the CRM UI; there is no fallback through the metadata actions.
+
+Verified 21.09.2026 on the Smart Bridges CRM: with only `createFunctions`/`updateFunction`/`getFunctions` enabled, neither a metadata update (no-op name/description publish) nor a duplicate-name re-create (`DUPLICATE_DATA`) produced an attachable action entity, and `postWorkflowRule` rejected the metadata ID while accepting the pre-existing entity ID of another function. Also: `instant_actions.actions` limit is 1 function action per condition (`LIMIT_EXCEEDED`, limit 1).
+
 ## Delete a Function
 
 Use `deleteFunction` only after confirming the function is not referenced by a button, workflow, blueprint, schedule, or another active configuration. Zoho rejects deletion while active references remain.
