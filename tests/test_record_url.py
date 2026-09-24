@@ -96,7 +96,14 @@ class RecordUrlCliTests(unittest.TestCase):
         stdout = io.StringIO()
         with patch.object(self.record_url, "mcporter_call", side_effect=fake_mcporter_call):
             with contextlib.redirect_stdout(stdout):
-                exit_code = self.record_url.main(["Leads", "407625000068467001"])
+                exit_code = self.record_url.main(
+                    [
+                        "Leads",
+                        "407625000068467001",
+                        "--mcp-url",
+                        "https://acme.zohomcp.eu/mcp/fake-token/message",
+                    ]
+                )
 
         self.assertEqual(exit_code, 0)
         self.assertEqual(len(calls), 2)
@@ -109,7 +116,7 @@ class RecordUrlCliTests(unittest.TestCase):
             "https://crm.zoho.eu/crm/org20079833178/tab/Leads/407625000068467001",
         )
 
-    def test_maps_divergent_module_names_and_supports_dc_and_json(self):
+    def test_dc_override_wins_over_endpoint_host(self):
         def fake_mcporter_call(tool, arguments, timeout=30):
             if tool == "ZohoCRM_getOrganization":
                 return {"org": [{"zgid": "987654321"}]}
@@ -126,7 +133,15 @@ class RecordUrlCliTests(unittest.TestCase):
         with patch.object(self.record_url, "mcporter_call", side_effect=fake_mcporter_call):
             with contextlib.redirect_stdout(stdout):
                 exit_code = self.record_url.main(
-                    ["Events", "123456789", "--dc", "com", "--json"]
+                    [
+                        "Events",
+                        "123456789",
+                        "--dc",
+                        "com",
+                        "--json",
+                        "--mcp-url",
+                        "https://acme.zohomcp.eu/mcp/fake-token/message",
+                    ]
                 )
 
         self.assertEqual(exit_code, 0)
@@ -139,8 +154,61 @@ class RecordUrlCliTests(unittest.TestCase):
                 "module": "Events",
                 "tab_name": "Meetings",
                 "record_id": "123456789",
+                "data_center": "com",
             },
         )
+
+    def test_data_center_derived_from_endpoint_host(self):
+        def fake_mcporter_call(tool, arguments, timeout=30):
+            if tool == "ZohoCRM_getOrganization":
+                return {"org": [{"zgid": "555"}]}
+            if tool == "ZohoCRM_getModules":
+                return {"modules": [{"api_name": "Events", "module_name": "Meetings"}]}
+            raise AssertionError(f"unexpected tool: {tool}")
+
+        stdout = io.StringIO()
+        with patch.object(self.record_url, "mcporter_call", side_effect=fake_mcporter_call):
+            with contextlib.redirect_stdout(stdout):
+                exit_code = self.record_url.main(
+                    [
+                        "Events",
+                        "123456789",
+                        "--json",
+                        "--mcp-url",
+                        "https://acme.zohomcp.com.au/mcp/fake-token/message",
+                    ]
+                )
+
+        self.assertEqual(exit_code, 0)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(
+            payload["url"],
+            "https://crm.zoho.com.au/crm/org555/tab/Meetings/123456789",
+        )
+        self.assertEqual(payload["data_center"], "com.au")
+
+    def test_undetectable_host_requires_explicit_dc(self):
+        calls = []
+
+        def fake_mcporter_call(tool, arguments, timeout=30):
+            calls.append(tool)
+            return {}
+
+        stderr = io.StringIO()
+        with patch.object(self.record_url, "mcporter_call", side_effect=fake_mcporter_call):
+            with contextlib.redirect_stderr(stderr):
+                exit_code = self.record_url.main(
+                    [
+                        "Leads",
+                        "123",
+                        "--mcp-url",
+                        "https://gateway.example.com/mcp/token/message",
+                    ]
+                )
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("could not derive", stderr.getvalue())
+        self.assertEqual(calls, [])  # fails before any MCP call
 
     def test_missing_module_returns_exit_code_one(self):
         def fake_mcporter_call(tool, arguments, timeout=30):
@@ -153,7 +221,14 @@ class RecordUrlCliTests(unittest.TestCase):
         stderr = io.StringIO()
         with patch.object(self.record_url, "mcporter_call", side_effect=fake_mcporter_call):
             with contextlib.redirect_stderr(stderr):
-                exit_code = self.record_url.main(["NonExistent", "123"])
+                exit_code = self.record_url.main(
+                    [
+                        "NonExistent",
+                        "123",
+                        "--mcp-url",
+                        "https://acme.zohomcp.eu/mcp/fake-token/message",
+                    ]
+                )
 
         self.assertEqual(exit_code, 1)
         self.assertIn("not found in getModules", stderr.getvalue())

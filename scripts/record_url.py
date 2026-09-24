@@ -12,7 +12,10 @@ Setup:
 Usage:
   python3 scripts/record_url.py Leads 407625000068467001
   python3 scripts/record_url.py Deals 407625000012345678 --json
-  python3 scripts/record_url.py Events 407625000012345678 --dc com
+  python3 scripts/record_url.py Events 407625000012345678 --json   # -> tab/Meetings/<id>
+
+The data center is derived from the MCP endpoint host (*.zohomcp.<dc>);
+--dc overrides it for unusual setups.
 """
 
 import argparse
@@ -20,6 +23,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 
 _SCRIPTS_DIR = Path(__file__).resolve().parent
 if str(_SCRIPTS_DIR) not in sys.path:
@@ -76,9 +80,10 @@ def build_parser():
     parser.add_argument(
         "--dc",
         type=data_center,
-        default="eu",
+        default=None,
         metavar="DC",
-        help="Zoho data center domain suffix (default: eu)",
+        help="override the data center derived from the MCP endpoint host "
+             "(one of: " + ", ".join(DATA_CENTERS) + ")",
     )
     parser.add_argument(
         "--json",
@@ -93,6 +98,26 @@ def build_parser():
     )
     add_endpoint_arguments(parser)
     return parser
+
+
+def resolve_data_center(args):
+    """Return the explicit --dc override or derive the DC from the endpoint host.
+
+    MCP endpoint hosts carry the data center as suffix (*.zohomcp.<dc>, e.g.
+    ...zohomcp.eu, ...zohomcp.com.au). Returns None when neither applies.
+    """
+    if args.dc:
+        return args.dc
+    try:
+        mcp_url = ENDPOINT.get()
+    except EndpointResolutionError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(1)
+    host = (urlsplit(mcp_url).hostname or "").lower().rstrip(".")
+    for dc in sorted(DATA_CENTERS, key=len, reverse=True):
+        if host.endswith(".zohomcp." + dc):
+            return dc
+    return None
 
 
 def mcporter_call(tool, args, timeout=30):
@@ -171,6 +196,15 @@ def main(argv=None):
     args = parser.parse_args(argv)
     ENDPOINT.configure(args)
 
+    dc = resolve_data_center(args)
+    if dc is None:
+        print(
+            "Error: could not derive the Zoho data center from the MCP endpoint "
+            "host; pass --dc explicitly",
+            file=sys.stderr,
+        )
+        return 1
+
     try:
         zgid = fetch_zgid(args.timeout)
         tab_name, api_name = fetch_module(args.module, args.timeout)
@@ -178,7 +212,7 @@ def main(argv=None):
         print(f"Error: {exc}", file=sys.stderr)
         return 1
 
-    url = build_url(args.dc, zgid, tab_name, args.record_id)
+    url = build_url(dc, zgid, tab_name, args.record_id)
 
     if args.json:
         print(
@@ -189,6 +223,7 @@ def main(argv=None):
                     "module": api_name,
                     "tab_name": tab_name,
                     "record_id": args.record_id,
+                    "data_center": dc,
                 },
                 ensure_ascii=False,
             )

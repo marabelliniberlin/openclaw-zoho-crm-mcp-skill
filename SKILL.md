@@ -90,7 +90,7 @@ python3 scripts/search_records.py Deals \
 python3 scripts/record_url.py Leads 407625000068467001
 ```
 
-Never hand-assemble CRM record links; generate them with `record_url.py`, which resolves the org `zgid` and the module tab name itself.
+Never hand-assemble CRM record links; generate them with `record_url.py`, which resolves the org `zgid`, the module tab name, and the data center itself.
 
 Supported options:
 

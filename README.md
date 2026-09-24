@@ -186,7 +186,7 @@ python3 scripts/search_records.py Contacts --coql "Email != ''" --json
 
 ### `record_url.py`
 
-Builds a correct record permalink for any module; resolves `zgid` via `getOrganization` and the module tab name via `getModules` (parameter-free), so callers never assemble URLs by hand.
+Builds a correct record permalink for any module; resolves `zgid` via `getOrganization` and the module tab name via `getModules` (parameter-free), so callers never assemble URLs by hand. The data center is derived from the MCP endpoint host (`*.zohomcp.<dc>`); use `--dc` only to override.
 
 ```bash
 python3 scripts/record_url.py Leads 407625000068467001
