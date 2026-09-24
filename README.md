@@ -184,6 +184,16 @@ python3 scripts/search_records.py Leads --fields id,Last_Name,Company,Email --co
 python3 scripts/search_records.py Contacts --coql "Email != ''" --json
 ```
 
+### `record_url.py`
+
+Builds a correct record permalink for any module; resolves `zgid` via `getOrganization` and the module tab name via `getModules` (parameter-free), so callers never assemble URLs by hand.
+
+```bash
+python3 scripts/record_url.py Leads 407625000068467001
+python3 scripts/record_url.py Deals 407625000012345678 --json
+python3 scripts/record_url.py Events 407625000012345678 --json   # -> tab/Meetings/<id>
+```
+
 ## mcporter Usage Patterns
 
 ### Use temp files for shell-based JSON arguments

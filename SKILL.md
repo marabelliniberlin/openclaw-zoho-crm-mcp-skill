@@ -87,13 +87,17 @@ python3 scripts/search_records.py Contacts --search "Smith" --json --limit 20
 python3 scripts/search_records.py Deals \
   --fields id,Deal_Name,Stage,Amount,Closing_Date \
   --coql "Stage = 'Qualification'" --json --limit 20
+python3 scripts/record_url.py Leads 407625000068467001
 ```
+
+Never hand-assemble CRM record links; generate them with `record_url.py`, which resolves the org `zgid` and the module tab name itself.
 
 Supported options:
 
 - `list_contacts.py`: `--search`, `--fields`, `--json`, `--full`, `--limit`, `--page-size`, `--timeout`
 - `list_accounts.py`: `--search`, `--all`, `--where`, `--fields`, `--json`, `--limit`, `--page-size`, `--timeout`
 - `search_records.py`: positional `module`, optional positional search term, `--search`, `--coql`, `--fields`, `--json`, `--limit`, `--page-size`, `--timeout`
+- `record_url.py`: positional `module` and numeric `record id`, `--dc`, `--json`, `--timeout`
 - All helpers: `--mcp-url`, `--profile`, `--profiles-file`
 
 Run any helper with `--help` without configuring credentials. Unknown or incomplete options must exit with status 2.
